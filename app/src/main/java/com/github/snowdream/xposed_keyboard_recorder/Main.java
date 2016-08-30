@@ -1,17 +1,19 @@
 package com.github.snowdream.xposed_keyboard_recorder;
 
+import android.support.annotation.NonNull;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.EditText;
-import de.robv.android.xposed.*;
-
-import static de.robv.android.xposed.XposedHelpers.findClass;
-
+import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 import java.util.Set;
+
+import static de.robv.android.xposed.XposedHelpers.findClass;
 
 /**
  * Created by snowdream on 16-8-29.
@@ -23,32 +25,31 @@ public class Main implements IXposedHookLoadPackage {
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
         log("SnowdreamFramework","Launch app: " + loadPackageParam.packageName);
 
-        hookKeyEvent(loadPackageParam.packageName);
-        hookTextInput(loadPackageParam.packageName);
+        hookKeyEvent(loadPackageParam.classLoader,loadPackageParam.packageName);
+        hookTextInput(loadPackageParam.classLoader,loadPackageParam.packageName);
     }
 
 
-    private void hookKeyEvent(final String packageName){
-        //Getting the View class
-        Class clazz = findClass("android.app.Activity", null);
-
+    private void hookKeyEvent(@NonNull final ClassLoader classLoader, @NonNull final String packageName){
+        log(packageName,"hookKeyEvent");
         //Hooking it
         try {
-            XposedHelpers.findAndHookMethod(clazz, "dispatchKeyEvent", new XC_MethodHook() {
+            XposedHelpers.findAndHookMethod("android.app.Activity",classLoader, "onKeyDown", int.class, KeyEvent.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     super.afterHookedMethod(param);
-                    if (param.args.length != 1 || !(param.args[0] instanceof KeyEvent)) {
+                    if (param.args.length != 2 || !(param.args[1] instanceof KeyEvent)) {
                         return;
                     }
 
-                    KeyEvent keyEvent = (KeyEvent) param.args[0];
+                    Integer keyCode = (Integer) param.args[0];
 
-                    log(packageName, "keyEvent code: " + keyEvent.getKeyCode());
+                    log(packageName, "keyEvent code: " + keyCode);
                 }
             });
         }catch (Exception e) {
             //Simply ignore
+            log(packageName,e.toString());
         }
 
     }
@@ -56,9 +57,11 @@ public class Main implements IXposedHookLoadPackage {
 
 
     //from https://github.com/giuliomvr/Xposed-Keylogger
-    private void hookTextInput(final String packageName) {
+    private void hookTextInput(@NonNull final ClassLoader classLoader, @NonNull final String packageName) {
+        log(packageName,"hookTextInput");
+
         //Getting the View class
-        Class clazz = findClass("android.view.View", null);
+        Class clazz = findClass("android.view.View", classLoader);
         //Hooking it
         final Set<XC_MethodHook.Unhook> unhooks = XposedBridge.hookAllConstructors(clazz, new XC_MethodHook() {
 
@@ -93,6 +96,7 @@ public class Main implements IXposedHookLoadPackage {
                     });
                 } catch (Exception e) {
                     //Simply ignore
+                    log(packageName,e.toString());
                 }
             }
 
@@ -110,11 +114,4 @@ public class Main implements IXposedHookLoadPackage {
 
         XposedBridge.log(builder.toString());
     }
-
-//    @Override
-//    public void initZygote(StartupParam startupParam) throws Throwable {
-//        log(TAG,"initZygote");
-//        hookKeyEvent(TAG);
-//        hookTextInput(TAG);
-//    }
 }

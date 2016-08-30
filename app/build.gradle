@@ -8,8 +8,8 @@ android {
         applicationId "com.github.snowdream.xposed_keyboard_recorder"
         minSdkVersion 9
         targetSdkVersion 24
-        versionCode 7
-        versionName "1.7"
+        versionCode 12
+        versionName "1.12"
     }
     buildTypes {
         release {
